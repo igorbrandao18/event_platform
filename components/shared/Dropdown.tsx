@@ -20,37 +20,60 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "../ui/input"
 import { createCategory, getAllCategories } from "@/lib/actions/category.actions"
+import { useUser } from "@clerk/nextjs"
 
 type DropdownProps = {
   value?: string
-  onChangeHandler?: () => void
+  onChangeHandler?: (value: string) => void
 }
 
 const Dropdown = ({ value, onChangeHandler }: DropdownProps) => {
   const [categories, setCategories] = useState<ICategory[]>([])
   const [newCategory, setNewCategory] = useState('');
+  const [error, setError] = useState('');
+  const { isSignedIn, user } = useUser();
 
-  const handleAddCategory = () => {
-    createCategory({
-      categoryName: newCategory.trim()
-    })
-      .then((category) => {
-        setCategories((prevState) => [...prevState, category])
-      })
+  const handleAddCategory = async () => {
+    if (!isSignedIn) {
+      setError('You must be signed in to create a category');
+      return;
+    }
+
+    try {
+      const category = await createCategory({
+        categoryName: newCategory.trim()
+      });
+
+      if (category) {
+        setCategories((prevState) => [...prevState, category]);
+        setNewCategory('');
+        setError('');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create category');
+    }
   }
 
   useEffect(() => {
     const getCategories = async () => {
-      const categoryList = await getAllCategories();
-
-      categoryList && setCategories(categoryList as ICategory[])
+      try {
+        const categoryList = await getAllCategories();
+        if (categoryList) {
+          setCategories(categoryList as ICategory[]);
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to fetch categories');
+      }
     }
 
     getCategories();
   }, [])
 
   return (
-    <Select onValueChange={onChangeHandler} defaultValue={value}>
+    <Select
+      value={value}
+      onValueChange={(value) => onChangeHandler?.(value)}
+    >
       <SelectTrigger className="select-field">
         <SelectValue placeholder="Category" />
       </SelectTrigger>
@@ -62,17 +85,40 @@ const Dropdown = ({ value, onChangeHandler }: DropdownProps) => {
         ))}
 
         <AlertDialog>
-          <AlertDialogTrigger className="p-medium-14 flex w-full rounded-sm py-3 pl-8 text-primary-500 hover:bg-primary-50 focus:text-primary-500">Add new category</AlertDialogTrigger>
+          <AlertDialogTrigger className="p-medium-14 flex w-full rounded-sm py-3 pl-8 text-primary-500 hover:bg-primary-50 focus:text-primary-500">
+            Add new category
+          </AlertDialogTrigger>
           <AlertDialogContent className="bg-white">
             <AlertDialogHeader>
               <AlertDialogTitle>New Category</AlertDialogTitle>
               <AlertDialogDescription>
-                <Input type="text" placeholder="Category name" className="input-field mt-3" onChange={(e) => setNewCategory(e.target.value)} />
+                <Input 
+                  type="text" 
+                  placeholder="Category name" 
+                  className="input-field mt-3" 
+                  onChange={(e) => {
+                    setNewCategory(e.target.value);
+                    setError('');
+                  }} 
+                  value={newCategory}
+                />
+                {error && <p className="text-red-500 mt-2">{error}</p>}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => startTransition(handleAddCategory)}>Add</AlertDialogAction>
+              <AlertDialogCancel onClick={() => {
+                setNewCategory('');
+                setError('');
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                startTransition(() => {
+                  handleAddCategory();
+                });
+              }}>
+                Add
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

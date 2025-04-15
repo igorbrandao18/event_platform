@@ -12,12 +12,18 @@ export default async function Home({ searchParams }: SearchParamProps) {
   const searchText = (searchParams?.query as string) || '';
   const category = (searchParams?.category as string) || '';
 
-  const events = await getAllEvents({
-    query: searchText,
-    category,
-    page,
-    limit: 6
-  })
+  let events;
+  try {
+    events = await getAllEvents({
+      query: searchText,
+      category,
+      page,
+      limit: 6
+    });
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    events = { data: [], totalPages: 0 };
+  }
 
   return (
     <>
@@ -52,13 +58,13 @@ export default async function Home({ searchParams }: SearchParamProps) {
         </div>
 
         <Collection 
-          data={events?.data}
+          data={events?.data || []}
           emptyTitle="No Events Found"
           emptyStateSubtext="Come back later"
           collectionType="All_Events"
           limit={6}
           page={page}
-          totalPages={events?.totalPages}
+          totalPages={events?.totalPages || 0}
         />
       </section>
     </>
