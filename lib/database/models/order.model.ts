@@ -1,30 +1,27 @@
-import { Schema, model, models, Document } from 'mongoose'
+import mongoose, { Schema, model, Model } from "mongoose";
+import { connectToDatabase } from "../index";
 
-export interface IOrder extends Document {
-  createdAt: Date
-  stripeId: string
-  totalAmount: string
+export interface IOrder {
+  createdAt: Date;
+  stripeId: string;
+  totalAmount: string;
   event: {
-    _id: string
-    title: string
-  }
-  buyer: {
-    _id: string
-    firstName: string
-    lastName: string
-  }
+    _id: Schema.Types.ObjectId;
+    title: string;
+  };
+  buyer: Schema.Types.ObjectId;
 }
 
 export type IOrderItem = {
-  _id: string
-  totalAmount: string
-  createdAt: Date
-  eventTitle: string
-  eventId: string
-  buyer: string
-}
+  _id: string;
+  totalAmount: string;
+  createdAt: Date;
+  eventTitle: string;
+  eventId: string;
+  buyer: string;
+};
 
-const OrderSchema = new Schema({
+const OrderSchema = new Schema<IOrder>({
   createdAt: {
     type: Date,
     default: Date.now,
@@ -38,15 +35,29 @@ const OrderSchema = new Schema({
     type: String,
   },
   event: {
-    type: Schema.Types.ObjectId,
-    ref: 'Event',
+    type: {
+      _id: {
+        type: Schema.Types.ObjectId,
+        ref: 'Event',
+        required: true,
+      },
+      title: {
+        type: String,
+        required: true,
+      },
+    },
+    required: true,
   },
   buyer: {
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
-})
+});
 
-const Order = models.Order || model('Order', OrderSchema)
+// Função para obter o modelo Order
+const getOrderModel = async (): Promise<Model<IOrder>> => {
+  await connectToDatabase();
+  return mongoose.models.Order || model<IOrder>('Order', OrderSchema);
+};
 
-export default Order
+export default getOrderModel;

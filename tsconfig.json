@@ -25,6 +25,9 @@
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "allowJs": true,
     "strict": false,
     "noEmit": true,

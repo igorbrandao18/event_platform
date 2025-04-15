@@ -1,7 +1,7 @@
-import { Document, Schema, model, models } from "mongoose";
+import mongoose, { Schema, model, Model } from "mongoose";
+import { connectToDatabase } from "../index";
 
-export interface IEvent extends Document {
-  _id: string;
+export interface IEvent {
   title: string;
   description?: string;
   location?: string;
@@ -12,25 +12,29 @@ export interface IEvent extends Document {
   price: string;
   isFree: boolean;
   url?: string;
-  category: { _id: string, name: string }
-  organizer: { _id: string, firstName: string, lastName: string }
+  category: Schema.Types.ObjectId;
+  organizer: Schema.Types.ObjectId;
 }
 
-const EventSchema = new Schema({
+const EventSchema = new Schema<IEvent>({
   title: { type: String, required: true },
   description: { type: String },
   location: { type: String },
   createdAt: { type: Date, default: Date.now },
   imageUrl: { type: String, required: true },
-  startDateTime: { type: Date, default: Date.now },
-  endDateTime: { type: Date, default: Date.now },
+  startDateTime: { type: Date, required: true },
+  endDateTime: { type: Date, required: true },
   price: { type: String },
   isFree: { type: Boolean, default: false },
   url: { type: String },
   category: { type: Schema.Types.ObjectId, ref: 'Category' },
   organizer: { type: Schema.Types.ObjectId, ref: 'User' },
-})
+});
 
-const Event = models.Event || model('Event', EventSchema);
+// Função para obter o modelo Event
+const getEventModel = async (): Promise<Model<IEvent>> => {
+  await connectToDatabase();
+  return mongoose.models.Event || model<IEvent>('Event', EventSchema);
+};
 
-export default Event;
+export default getEventModel;

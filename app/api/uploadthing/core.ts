@@ -8,14 +8,13 @@ export const ourFileRouter = {
   // Define as many FileRoutes as you like, each with a unique routeSlug
   imageUploader: f({ image: { maxFileSize: "4MB" } })
     // Set permissions and file types for this FileRoute
-    .middleware(async () => {
+    .middleware(async ({ req }) => {
       try {
         // This code runs on your server before upload
         const user = await currentUser();
  
         // If you throw, the user will not be able to upload
         if (!user) {
-          console.error("Upload attempt by unauthorized user");
           throw new Error("Unauthorized");
         }
  
@@ -23,7 +22,7 @@ export const ourFileRouter = {
         return { userId: user.id };
       } catch (error) {
         console.error("Error in upload middleware:", error);
-        throw error;
+        throw new Error("Failed to authenticate user");
       }
     })
     .onUploadComplete(async ({ metadata, file }) => {
@@ -33,10 +32,10 @@ export const ourFileRouter = {
         console.log("file url", file.url);
  
         // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
-        return { uploadedBy: metadata.userId };
+        return { uploadedBy: metadata.userId, url: file.url };
       } catch (error) {
         console.error("Error in onUploadComplete:", error);
-        throw error;
+        throw new Error("Failed to process upload");
       }
     }),
 } satisfies FileRouter;

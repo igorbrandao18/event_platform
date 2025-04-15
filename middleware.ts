@@ -1,6 +1,9 @@
 import { authMiddleware } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createUser } from "./lib/actions/user.actions";
+import getUserModel from "./lib/database/models/user.model";
+import { connectToDatabase } from "./lib/database";
 
 export default authMiddleware({
   publicRoutes: [
@@ -18,7 +21,7 @@ export default authMiddleware({
     '/api/webhook/stripe',
     '/api/uploadthing'
   ],
-  afterAuth: (auth, req) => {
+  afterAuth: async (auth, req) => {
     // Se a rota é pública, permita o acesso
     if (auth.isPublicRoute) {
       return NextResponse.next();
@@ -29,7 +32,35 @@ export default authMiddleware({
       return NextResponse.redirect(new URL('/sign-in', req.url));
     }
 
-    // Se o usuário está autenticado, permita o acesso
+    try {
+      // Se o usuário está autenticado, verifique se já existe no banco de dados
+      if (auth.userId && auth.user) {
+        await connectToDatabase();
+        const User = await getUserModel();
+        
+        // Verificar se o usuário já existe
+        const existingUser = await User.findOne({ clerkId: auth.userId });
+        
+        // Se o usuário não existe, crie-o
+        if (!existingUser) {
+          const user = {
+            clerkId: auth.userId,
+            email: auth.user.emailAddresses[0]?.emailAddress || '',
+            username: auth.user.username || auth.user.firstName?.toLowerCase() || '',
+            firstName: auth.user.firstName || '',
+            lastName: auth.user.lastName || '',
+            photo: auth.user.imageUrl || '',
+          };
+
+          await createUser(user);
+        }
+      }
+    } catch (error) {
+      console.error('Error in middleware:', error);
+      // Continue mesmo se houver erro, pois o webhook pode ter criado o usuário
+    }
+
+    // Permita o acesso
     return NextResponse.next();
   }
 });
